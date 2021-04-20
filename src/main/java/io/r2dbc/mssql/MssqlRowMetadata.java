@@ -26,7 +26,6 @@ import reactor.util.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -35,7 +34,7 @@ import java.util.Map;
  *
  * @author Mark Paluch
  */
-final class MssqlRowMetadata extends ColumnSource implements RowMetadata, Collection<String> {
+final class MssqlRowMetadata extends NamedCollectionSupport<Column> implements RowMetadata, Collection<String> {
 
     private final Codecs codecs;
 
@@ -50,7 +49,7 @@ final class MssqlRowMetadata extends ColumnSource implements RowMetadata, Collec
      * @param nameKeyedColumns name-keyed {@link Map} of {@link Column}s.
      */
     MssqlRowMetadata(Codecs codecs, Column[] columns, Map<String, Column> nameKeyedColumns) {
-        super(columns, nameKeyedColumns);
+        super(columns, nameKeyedColumns, Column::getName, "column");
         this.codecs = Assert.requireNonNull(codecs, "Codecs must not be null");
     }
 
@@ -72,7 +71,7 @@ final class MssqlRowMetadata extends ColumnSource implements RowMetadata, Collec
         if (this.metadataCache == null) {
             this.metadataCache = new HashMap<>();
         }
-        return this.metadataCache.computeIfAbsent(this.getColumn(index), column -> new MssqlColumnMetadata(column, this.codecs));
+        return this.metadataCache.computeIfAbsent(this.get(index), column -> new MssqlColumnMetadata(column, this.codecs));
     }
 
     @Override
@@ -80,7 +79,7 @@ final class MssqlRowMetadata extends ColumnSource implements RowMetadata, Collec
         if (this.metadataCache == null) {
             this.metadataCache = new HashMap<>();
         }
-        return this.metadataCache.computeIfAbsent(this.getColumn(identifier), column -> new MssqlColumnMetadata(column, this.codecs));
+        return this.metadataCache.computeIfAbsent(this.get(identifier), column -> new MssqlColumnMetadata(column, this.codecs));
     }
 
     @Override
@@ -90,11 +89,11 @@ final class MssqlRowMetadata extends ColumnSource implements RowMetadata, Collec
             this.metadataCache = new HashMap<>();
         }
 
-        List<MssqlColumnMetadata> metadatas = new ArrayList<>(this.getColumnCount());
+        List<MssqlColumnMetadata> metadatas = new ArrayList<>(this.getCount());
 
-        for (int i = 0; i < this.getColumnCount(); i++) {
+        for (int i = 0; i < this.getCount(); i++) {
 
-            MssqlColumnMetadata columnMetadata = this.metadataCache.computeIfAbsent(this.getColumn(i), column -> new MssqlColumnMetadata(column, this.codecs));
+            MssqlColumnMetadata columnMetadata = this.metadataCache.computeIfAbsent(this.get(i), column -> new MssqlColumnMetadata(column, this.codecs));
             metadatas.add(columnMetadata);
         }
 
@@ -106,106 +105,5 @@ final class MssqlRowMetadata extends ColumnSource implements RowMetadata, Collec
         return this;
     }
 
-    @Override
-    public int size() {
-        return this.getColumnCount();
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return size() == 0;
-    }
-
-    @Override
-    public boolean contains(Object o) {
-
-        if (o instanceof String) {
-            return this.findColumn((String) o) != null;
-        }
-
-        return false;
-    }
-
-    @Override
-    public boolean containsAll(Collection<?> c) {
-
-        for (Object o : c) {
-            if (!contains(o)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    @Override
-    public Iterator<String> iterator() {
-
-        Column[] columns = this.getColumns();
-
-        return new Iterator<String>() {
-
-            int index = 0;
-
-            @Override
-            public boolean hasNext() {
-                return columns.length > this.index;
-            }
-
-            @Override
-            public String next() {
-                Column column = columns[this.index++];
-                return column.getName();
-            }
-        };
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public <T> T[] toArray(T[] a) {
-        return (T[]) toArray();
-    }
-
-    @Override
-    public Object[] toArray() {
-
-        Object[] result = new Object[size()];
-
-        for (int i = 0; i < size(); i++) {
-            result[i] = this.getColumn(i).getName();
-        }
-
-        return result;
-    }
-
-    @Override
-    public boolean add(String s) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean remove(Object o) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean addAll(Collection<? extends String> c) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean removeAll(Collection<?> c) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean retainAll(Collection<?> c) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void clear() {
-        throw new UnsupportedOperationException();
-    }
 
 }
